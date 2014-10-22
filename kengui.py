@@ -2,14 +2,48 @@
 
 import Tkinter as tk
 import tkSimpleDialog
+import tkMessageBox
 import kenken
+
+class GroupDialog(tkSimpleDialog.Dialog):
+  def body(self, master):
+    tk.Label(master, text="Operation:").grid(row=0)
+    tk.Label(master, text="Second:").grid(row=1)
+
+    self.e1 = tk.Entry(master)
+    self.e2 = tk.Entry(master)
+
+    self.e1.grid(row=0, column=1)
+    self.e2.grid(row=1, column=1)
+
+    return self.e1
+
+  def validate(self):
+    try:
+      operation = self.e1.get()
+      total = int(self.e2.get())
+      if not operation in ['/', '*', '+', '-']:
+        raise ValueError("Input should be an operation!")
+
+      self.result = (operation, total)
+      return 1
+
+    except ValueError:
+      tkMessageBox.showwarning("Bad Input", "Please try again")
+      return 0
+
 
 class Kengui(object):
 
   def __init__(self, master, size):
     self.master = master
     self.kenken = kenken.Kenken(size)
-    self.labels = [tk.Label(self.master, highlightbackground='black', highlightthickness=1,\
+    self.left_frame = tk.Frame(self.master, highlightthickness=1, highlightbackground='black')
+    self.right_frame = tk.Frame(self.master)
+    self.left_frame.grid(row=0, column=0)
+    self.right_frame.grid(row=0, column=1)
+
+    self.labels = [tk.Label(self.left_frame, highlightbackground='black', highlightthickness=1,\
         height=2, width=3, text=" ") for i in range(size**2)]
     self.selected = []
     self.color_index = 0
@@ -51,17 +85,25 @@ class Kengui(object):
     if not self.selected:
       return
 
-    op = tkSimpleDialog.askstring("Operation", "Please enter one of +-/*")
-    value = tkSimpleDialog.askinteger("Total", "Please enter desired result")
-    self.kenken.add_region([(i/6, i%6) for i in self.selected], op, value)
+    res = GroupDialog(self.master).result
 
-    for index in self.selected:
-      self.labels[index]['background'] = self.colors[self.color_index]
+    if res is not None:
+      op, value = res
+      self.kenken.add_region([(i/6, i%6) for i in self.selected], op, value)
 
-    self.color_index += 1
-    self.color_index %= len(self.colors)
+      for index in self.selected:
+        self.labels[index]['background'] = self.colors[self.color_index]
 
-    self.clear_selection(None)
+      tk.Label(self.right_frame, text="   ", background=self.colors[self.color_index]).\
+          grid(row=self.color_index, column=0)
+      tk.Label(self.right_frame, text="%s %s" % res).\
+          grid(row=self.color_index, column=1)
+
+      self.color_index += 1
+      self.color_index %= len(self.colors)
+
+
+      self.clear_selection(None)
 
   def solve(self, event):
     self.kenken.solve()
